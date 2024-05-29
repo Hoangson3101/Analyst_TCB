@@ -1,0 +1,143 @@
+---
+title: "analyst"
+author: "Hoàng Sơn"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+## Loading Libraries
+
+library(tidyverse)
+library(lubridate)
+library(TTR)
+library(xts)
+library(PerformanceAnalytics)
+```
+
+```{r}
+file_path <- "D:/Data Analyst/test2/data_techcom.csv"
+data <- read_csv(file_path)
+
+```
+
+```{r}
+print(head(data))
+
+```
+
+```{r}
+data <- data %>%
+  mutate(Date = ymd(Date))
+
+```
+
+```{r}
+summary(data)
+
+```
+
+```{r}
+ggplot(data, aes(x = Date, y = Close)) +
+  geom_line() +
+  labs(title = "Closing Price Over Time", x = "Date", y = "Closing Price")
+
+```
+
+```{r}
+
+```
+
+```{r}
+data <- data %>%
+  mutate(SMA50 = SMA(Close, n = 50),
+         SMA200 = SMA(Close, n = 200))
+
+ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Close, color = "Close")) +
+  geom_line(aes(y = SMA50, color = "SMA50")) +
+  geom_line(aes(y = SMA200, color = "SMA200")) +
+  labs(title = "Closing Price and Moving Averages", x = "Date", y = "Price") +
+  scale_color_manual(values = c(
+    "Close" = "black",
+    "SMA50" = "blue",
+    "SMA200" = "red"
+  ))
+
+```
+
+```{r}
+data <- data %>%
+  mutate(RSI = RSI(Close))
+
+ggplot(data, aes(x = Date, y = RSI)) +
+  geom_line() +
+  labs(title = "Relative Strength Index (RSI)", x = "Date", y = "RSI")
+
+```
+
+```{r}
+macd <- MACD(data$Close)
+data <- cbind(data, macd)
+
+ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = macd, color = "MACD")) +
+  geom_line(aes(y = signal, color = "Signal")) +
+  labs(title = "Moving Average Convergence Divergence (MACD)", x = "Date", y = "Value") +
+  scale_color_manual(values = c("MACD" = "blue", "Signal" = "red"))
+
+```
+
+```{r}
+library(forecast)
+
+fit <- auto.arima(data$Close)
+summary(fit)
+forecast <- forecast(fit, h = 30)
+plot(forecast)
+
+```
+
+```{r}
+library(quantmod)
+data$SAR <- SAR(HLC(data))
+ggplot(data, aes(x = Date, y = Close)) +
+  geom_line() +
+  geom_point(aes(y = SAR), color = "red", size = 1) +
+  labs(title = "Parabolic SAR", x = "Date", y = "Price")
+```
+
+```{r}
+model_multivariate <- lm(Close ~ Open + High + Low + Volume + RSI + SMA50 + SMA200, data = data)
+summary(model_multivariate)
+
+```
+
+```{r}
+install.packages("rugarch")
+library(rugarch)
+
+spec <- ugarchspec(
+  variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(1, 1))
+)
+fit_garch <- ugarchfit(spec = spec, data = data$Close)
+summary(fit_garch)
+
+forecast_garch <- ugarchforecast(fit_garch, n.ahead = 30)
+plot(forecast_garch)
+
+```
+
+```{r}
+cash_flows <- c(10, 15, 20, 25, 30)  # Example cash flows
+discount_rate <- 0.1  # Assumed discount rate
+
+npv <- sum(cash_flows / (1 + discount_rate) ^ (1:length(cash_flows)))
+npv
+
+```
